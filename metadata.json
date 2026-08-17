@@ -1,0 +1,6 @@
+{
+  "name": "Sincericidio",
+  "description": "Juego de cartas, preguntas sin filtro, confesiones y retos entre amigos con modo fiesta, sala QR y votaciones.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
