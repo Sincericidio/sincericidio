@@ -4,49 +4,131 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import confetti from 'canvas-confetti';
-import { ShieldAlert, Clock, Eye, CheckCircle2, XCircle, Trophy, ArrowRight, Flame, Volume2 } from 'lucide-react';
+import { Trophy, CheckCircle2, XCircle, Scale } from 'lucide-react';
 
-// BANCO DE MISIONES Y TEMAS CEBO SEGÚN LA CATEGORÍA
-const MISSIONS_DB: Record<string, { topics: string[]; missions: string[] }> = {
+const GAME_DATABASE: Record<string, {
+  topics: string[];
+  missions: string[];
+  banquillo_questions: { question: string; options: string[] }[];
+  banquillo_accusations: string[];
+}> = {
   amigos: {
     topics: [
       'Contad anécdotas de vuestros peores trabajos o jefes insoportables.',
-      '¿Cuál ha sido la compra más absurda o inútil en la que habéis tirado dinero?',
+      '¿Cuál ha sido la compra más inútil en la que habéis tirado dinero?',
       '¿Qué teoría de conspiración loca creéis que podría ser 100% real?',
-      'Contad la peor metedura de pata que habéis tenido en una fiesta.'
+      'Contad vuestra mayor metedura de pata en una fiesta o evento.'
     ],
     missions: [
-      'Consigue que alguien se toque el pelo o la cabeza.',
+      'Consigue que alguien se toque la cabeza o el pelo.',
       'Haz que alguien te dé la razón diciendo "Totalmente", "Tal cual" o "Literal".',
       'Haz que un amigo mencione una comida o bebida específica.',
       'Convence al grupo de un rumor falso y ridículo sobre un famoso.',
       'Consigue que alguien te choque los cinco o te dé la mano.',
-      'Haz que alguien hable de un viaje o de irse al extranjero.',
+      'Haz que alguien hable de viajes o de mudarse al extranjero.',
       'Consigue que todo el grupo se quede en silencio total durante al menos 3 segundos.'
+    ],
+    banquillo_accusations: [
+      '¿Quién de esta sala tardaría menos en vender a sus amigos por 1 millón de euros?',
+      '¿Quién finge mejor que le caen bien todos cuando en realidad no es así?',
+      '¿Quién sobreviviría menos tiempo en un apocalipsis zombie?',
+      '¿Quién es más probable que termine en la cárcel por una tontería?'
+    ],
+    banquillo_questions: [
+      {
+        question: 'Si tuvieras que eliminar una de estas 4 cosas de tu vida para siempre, ¿cuál sería?',
+        options: ['Las redes sociales', 'El alcohol / salir de fiesta', 'Tu grupo de amigos actual', 'Tu teléfono móvil']
+      },
+      {
+        question: '¿Qué defecto toleras MENOS en una persona?',
+        options: ['Que sea tacaña', 'Que sea impuntual', 'Que hable a espaldas', 'Que sea prepotente']
+      }
     ]
   },
   picante: {
     topics: [
       '¿Qué es lo más tóxico que habéis hecho por celos o por amor?',
       '¿Cuál ha sido vuestra peor cita o experiencia romántica vergonzosa?',
-      '¿Qué secreto inconfesable sabéis de alguien que jamás podréis contar?'
+      '¿Qué secreto inconfesable sabéis que nunca podréis admitir en público?'
     ],
     missions: [
       'Haz que alguien admita si saldría con el ex de algún amigo.',
-      'Consigue que alguien se sonroje o se ponga nervioso con una mirada/pregunta.',
-      'Haz que alguien confiese su mayor "crush" inalcanzable.',
-      'Consigue que alguien hable de aplicaciones de citas (Tinder, Bumble).'
+      'Consigue que alguien hable de aplicaciones de citas (Tinder, Bumble, etc.).',
+      'Haz que alguien confiese cuál fue su primer crush de la infancia.',
+      'Consigue que alguien se ponga visiblemente nervioso con una pregunta.'
+    ],
+    banquillo_accusations: [
+      '¿Quién es más probable que sea infiel y nunca lo confiese?',
+      '¿Quién de la sala tiene el historial amoroso más caótico?',
+      '¿Quién volvería con su ex tóxico/a esta misma noche si le escribiera?'
+    ],
+    banquillo_questions: [
+      {
+        question: '¿Qué es lo primero en lo que te fijas al ligar con alguien?',
+        options: ['La cara y sonrisa', 'El físico y cuerpo', 'El sentido del humor', 'La forma de vestir / estilo']
+      }
     ]
   },
   familiar: {
     topics: [
-      '¿Cuál es el recuerdo de vacaciones familiares más caótico que tenéis?',
-      '¿Qué comida típica odiáis que a todo el mundo le encanta?'
+      '¿Cuál es el recuerdo de vacaciones familiares más divertido o caótico?',
+      '¿Qué comida tradicional odiáis que a todo el mundo le encanta?'
     ],
     missions: [
-      'Consigue que alguien mencione a los abuelos o a un tío.',
-      'Haz que alguien cuente un chiste malo.',
-      'Consigue que alguien imite a otro miembro de la familia.'
+      'Consigue que alguien mencione a los abuelos o a un primo.',
+      'Haz que alguien cuente un chiste malo y se ría solo.',
+      'Consigue que alguien recuerde una serie o película de los 90/2000.'
+    ],
+    banquillo_accusations: [
+      '¿Quién de la familia tardaría menos en perderse en un centro comercial?',
+      '¿Quién es el más dramático/a cuando le da un resfriado común?'
+    ],
+    banquillo_questions: [
+      {
+        question: '¿Cuál era tu castigo más temido de pequeño/a?',
+        options: ['Sin paga semanal', 'Sin salir con amigos', 'Sin consola / móvil', 'La bronca de 2 horas']
+      }
+    ]
+  },
+  previa: {
+    topics: [
+      '¿Cuál ha sido la noche de fiesta más legendaria que habéis vivido?',
+      '¿Cuál es la peor resaca de vuestra vida y qué la provocó?'
+    ],
+    missions: [
+      'Consigue que todo el grupo haga un brindis antes de 2 minutos.',
+      'Haz que alguien empiece a cantar una canción conocida a coro.',
+      'Consigue que alguien proponga salir a otra fiesta o discoteca.'
+    ],
+    banquillo_accusations: [
+      '¿Quién es el primero en desaparecer en una noche de fiesta sin avisar?',
+      '¿Quién es más probable que termine bailando encima de un altavoz o barra?'
+    ],
+    banquillo_questions: [
+      {
+        question: '¿Cuál es tu bebida / copa prohibida que nunca más volverás a probar?',
+        options: ['Tequila / Jäger', 'Ginebra barata', 'Vodka con refresco', 'Cerveza caliente']
+      }
+    ]
+  },
+  parejas: {
+    topics: [
+      '¿Cuál fue la primera impresión real que tuviste de tu pareja?',
+      '¿Qué manía absurda de tu pareja te saca más de quicio?'
+    ],
+    missions: [
+      'Consigue que tu pareja admita que llevas razón en una discusión absurda.',
+      'Haz que alguien recuerde una fecha de aniversario o primer beso.'
+    ],
+    banquillo_accusations: [
+      '¿Quién de los dos tarda más en pedir perdón tras una discusión?',
+      '¿Quién es más celoso/a en secreto aunque diga que no?'
+    ],
+    banquillo_questions: [
+      {
+        question: '¿Qué es lo más cursi que has hecho por amor?',
+        options: ['Una carta de 10 páginas', 'Viajar de sorpresa', 'Un regalo hecho a mano', 'Dedicar una canción vergonzosa']
+      }
     ]
   }
 };
@@ -59,53 +141,81 @@ export default function GamePlayPage() {
   const [player, setPlayer] = useState<any>(null);
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
-  
-  // Fases del juego: 'mission_brief' | 'playing' | 'self_report' | 'deduction' | 'results'
-  const [phase, setPhase] = useState<'mission_brief' | 'playing' | 'self_report' | 'deduction' | 'results'>('mission_brief');
-  
+  const [loading, setLoading] = useState(true);
+
+  const [phase, setPhase] = useState<'brief' | 'playing' | 'self_report' | 'deduction' | 'results'>('brief');
+  const [timeLeft, setTimeLeft] = useState(180);
+
   const [topic, setTopic] = useState('');
   const [myMission, setMyMission] = useState('');
-  const [timeLeft, setTimeLeft] = useState(180); // 3 minutos (180s)
-  
   const [selfReportSuccess, setSelfReportSuccess] = useState<boolean | null>(null);
   const [deductions, setDeductions] = useState<Record<string, string>>({});
-  const [submittedDeductions, setSubmittedDeductions] = useState(false);
 
-  // Inicializar juego y asignar misiones
+  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+
   useEffect(() => {
-    const savedPlayer = sessionStorage.getItem('sincericidio_player');
-    const savedRoom = sessionStorage.getItem('sincericidio_room');
+    const initGame = async () => {
+      try {
+        let savedPlayer = sessionStorage.getItem('sincericidio_player');
+        let savedRoom = sessionStorage.getItem('sincericidio_room');
+        let r = savedRoom ? JSON.parse(savedRoom) : null;
+        let p = savedPlayer ? JSON.parse(savedPlayer) : null;
 
-    if (!savedPlayer || !savedRoom) {
-      router.push('/');
-      return;
-    }
+        // Si falta la sala en sesión, buscarla directamente en Supabase
+        if (!r && roomCode) {
+          const { data: roomData } = await supabase.from('rooms').select('*').eq('code', roomCode).single();
+          if (roomData) {
+            r = roomData;
+            sessionStorage.setItem('sincericidio_room', JSON.stringify(roomData));
+          }
+        }
 
-    const p = JSON.parse(savedPlayer);
-    const r = JSON.parse(savedRoom);
-    setPlayer(p);
-    setRoom(r);
+        if (!r) {
+          router.push('/');
+          return;
+        }
 
-    const category = r.category in MISSIONS_DB ? r.category : 'amigos';
-    const db = MISSIONS_DB[category];
+        setPlayer(p);
+        setRoom(r);
 
-    // Asignar tema cebo aleatorio
-    const randomTopic = db.topics[Math.floor(Math.random() * db.topics.length)];
-    setTopic(randomTopic);
+        const categoryKey = r.category in GAME_DATABASE ? r.category : 'amigos';
+        const db = GAME_DATABASE[categoryKey];
 
-    // Asignar misión aleatoria
-    const randomMission = db.missions[Math.floor(Math.random() * db.missions.length)];
-    setMyMission(randomMission);
+        if (r.game_type === 'mision_secreta') {
+          setTopic(db.topics[Math.floor(Math.random() * db.topics.length)]);
+          setMyMission(db.missions[Math.floor(Math.random() * db.missions.length)]);
+        } else {
+          const isAccusation = Math.random() > 0.5;
+          if (isAccusation && db.banquillo_accusations?.length > 0) {
+            setCurrentQuestion({
+              type: 'accusation',
+              text: db.banquillo_accusations[Math.floor(Math.random() * db.banquillo_accusations.length)]
+            });
+          } else {
+            setCurrentQuestion({
+              type: 'multiple_choice',
+              ...db.banquillo_questions[Math.floor(Math.random() * db.banquillo_questions.length)]
+            });
+          }
+        }
 
-    // Cargar jugadores de la sala
-    const fetchPlayers = async () => {
-      const { data } = await supabase.from('players').select('*').eq('room_id', r.id);
-      if (data) setPlayers(data);
+        // Cargar jugadores
+        const { data: playersData } = await supabase.from('players').select('*').eq('room_id', r.id);
+        if (playersData) setPlayers(playersData);
+
+      } catch (err) {
+        console.error("Error al cargar la partida:", err);
+      } finally {
+        // SEGURIDAD: Siempre desbloquea la pantalla pase lo que pase
+        setLoading(false);
+      }
     };
-    fetchPlayers();
+
+    initGame();
   }, [roomCode, router]);
 
-  // Temporizador de 3 minutos cuando empieza la charla
+  // Reloj de cuenta atrás
   useEffect(() => {
     if (phase !== 'playing') return;
 
@@ -123,211 +233,222 @@ export default function GamePlayPage() {
     return () => clearInterval(timer);
   }, [phase]);
 
-  // Formato mm:ss
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Guardar auto-declaración
-  const handleSelfReport = (success: boolean) => {
-    setSelfReportSuccess(success);
-    setPhase('deduction');
-  };
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#0B0E14] text-white flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-4 border-[#CCFF00] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-[#94A3B8] font-bold">Cargando partida...</p>
+      </main>
+    );
+  }
 
-  // Enviar sospechas
-  const handleSubmitDeductions = () => {
-    setSubmittedDeductions(true);
-    confetti({ particleCount: 50, spread: 70 });
-    setPhase('results');
-  };
+  const isMisionSecreta = room?.game_type === 'mision_secreta';
 
   return (
     <main className="min-h-screen bg-[#0B0E14] text-white flex flex-col items-center p-4 sm:p-6 selection:bg-[#FF1744]">
       <div className="w-full max-w-md flex flex-col items-center gap-6 my-auto">
 
-        {/* FASE 1: LECTURA DE MISIÓN SECRETA */}
-        {phase === 'mission_brief' && (
+        {/* MODO 1: MISIÓN SECRETA */}
+        {isMisionSecreta && (
+          <>
+            {phase === 'brief' && (
+              <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in duration-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#CCFF00] bg-[#CCFF00]/10 px-2.5 py-1 rounded-full">
+                    Misión Confidencial
+                  </span>
+                  <span className="text-xs font-bold text-[#94A3B8]">Sala {roomCode}</span>
+                </div>
+
+                <div className="bg-[#0B0E14] p-4 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#94A3B8] block mb-1">
+                    📢 Tema para hablar todos:
+                  </span>
+                  <p className="text-sm font-bold text-white leading-snug">"{topic}"</p>
+                </div>
+
+                <div className="bg-[#FF1744]/10 border-2 border-[#FF1744] p-5 rounded-2xl text-center flex flex-col items-center gap-2 relative shadow-lg shadow-[#FF1744]/10">
+                  <span className="text-2xl">🤫</span>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#FF1744]">
+                    Tu Misión Oculta:
+                  </span>
+                  <p className="text-base font-black text-white leading-snug">{myMission}</p>
+                </div>
+
+                <button
+                  onClick={() => setPhase('playing')}
+                  className="w-full bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black text-base py-4 rounded-2xl shadow-xl shadow-[#CCFF00]/20 active:scale-95 transition-all mt-2 cursor-pointer"
+                >
+                  ¡ENTENDIDO, BLOQUEAR Y JUGAR! ⏱️
+                </button>
+              </div>
+            )}
+
+            {phase === 'playing' && (
+              <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center gap-6 animate-in fade-in duration-300">
+                <div className="w-24 h-24 rounded-full border-4 border-[#FF1744] flex items-center justify-center bg-[#FF1744]/10 shadow-lg shadow-[#FF1744]/20 animate-pulse">
+                  <span className="font-brand font-black text-3xl text-white">{formatTime(timeLeft)}</span>
+                </div>
+                <div className="bg-[#0B0E14] p-4 rounded-2xl border border-white/5 w-full">
+                  <p className="text-xs text-[#94A3B8] font-medium leading-relaxed">
+                    📵 <strong>Deja el móvil en la mesa boca abajo.</strong><br />
+                    Cumple tu misión en la charla sin que sospechen.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPhase('self_report')}
+                  className="text-[11px] text-[#94A3B8] hover:text-white underline underline-offset-4 cursor-pointer"
+                >
+                  (Terminar ronda antes)
+                </button>
+              </div>
+            )}
+
+            {phase === 'self_report' && (
+              <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-5">
+                <span className="text-3xl">🛎️</span>
+                <h2 className="text-xl font-black text-white">¿Conseguiste cumplir tu misión?</h2>
+                <p className="text-xs text-[#94A3B8]">"{myMission}"</p>
+                <div className="grid grid-cols-2 gap-3 w-full mt-2">
+                  <button
+                    onClick={() => { setSelfReportSuccess(true); setPhase('deduction'); }}
+                    className="bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black py-4 rounded-2xl shadow-lg shadow-[#CCFF00]/20 active:scale-95 transition-all flex flex-col items-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-6 h-6" />
+                    <span>SÍ, LO LOGRÉ</span>
+                  </button>
+                  <button
+                    onClick={() => { setSelfReportSuccess(false); setPhase('deduction'); }}
+                    className="bg-white/10 hover:bg-white/20 text-white font-black py-4 rounded-2xl active:scale-95 transition-all flex flex-col items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="w-6 h-6 text-[#FF1744]" />
+                    <span>NO HUBO FORMA</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {phase === 'deduction' && (
+              <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-5">
+                <div className="text-center">
+                  <h2 className="text-xl font-black text-white">🕵️‍♂️ Hora de Sospechar</h2>
+                  <p className="text-xs text-[#94A3B8] mt-1">¿Qué intentaba hacer cada uno?</p>
+                </div>
+                <div className="flex flex-col gap-3 max-h-[260px] overflow-y-auto">
+                  {players.filter((p) => p.id !== player?.id).map((p) => (
+                    <div key={p.id} className="bg-[#0B0E14] p-3.5 rounded-2xl border border-white/5">
+                      <label className="block text-xs font-black text-[#CCFF00] mb-1">{p.nickname}</label>
+                      <input
+                        type="text"
+                        placeholder="Escribe su sospecha..."
+                        value={deductions[p.id] || ''}
+                        onChange={(e) => setDeductions({ ...deductions, [p.id]: e.target.value })}
+                        className="w-full bg-transparent text-xs text-white placeholder-[#94A3B8]/30 outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { confetti({ particleCount: 50, spread: 70 }); setPhase('results'); }}
+                  className="w-full bg-[#7928CA] hover:bg-[#681fb0] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#7928CA]/30 active:scale-95 transition-all cursor-pointer"
+                >
+                  ENVIAR DEDUCCIONES 🚀
+                </button>
+              </div>
+            )}
+
+            {phase === 'results' && (
+              <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-5">
+                <Trophy className="w-12 h-12 text-[#CCFF00] animate-bounce" />
+                <h2 className="text-2xl font-brand font-black text-white">¡VEREDICTO FINAL!</h2>
+                <div className="w-full bg-[#0B0E14] p-4 rounded-2xl border border-white/5 text-left">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-sm text-white">Tu Misión:</span>
+                    <span className="text-xs font-black text-[#CCFF00]">
+                      {selfReportSuccess ? '+100 pts (Éxito)' : '+0 pts'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#94A3B8]">"{myMission}"</p>
+                </div>
+                <button
+                  onClick={() => router.push(`/room/${roomCode}`)}
+                  className="w-full bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black py-4 rounded-2xl active:scale-95 transition-all cursor-pointer"
+                >
+                  JUGAR OTRA RONDA 🔥
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* MODO 2: EL BANQUILLO */}
+        {!isMisionSecreta && (
           <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#CCFF00] bg-[#CCFF00]/10 px-2.5 py-1 rounded-full">
-                Misión Confidencial
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#FF1744] bg-[#FF1744]/10 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Scale className="w-3 h-3" /> El Banquillo
               </span>
               <span className="text-xs font-bold text-[#94A3B8]">Sala {roomCode}</span>
             </div>
 
-            {/* TEMA CEBO PÚBLICO */}
-            <div className="bg-[#0B0E14] p-4 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#94A3B8] block mb-1">
-                📢 Tema Rompehielos (Para hablar todos):
-              </span>
-              <p className="text-sm font-bold text-white leading-snug">
-                "{topic}"
-              </p>
+            <div className="text-center my-2">
+              <h2 className="text-lg sm:text-xl font-black text-white leading-snug">
+                {currentQuestion?.text || currentQuestion?.question || '¿Quién es el más culpable?'}
+              </h2>
             </div>
 
-            {/* TU MISIÓN SECRETA */}
-            <div className="bg-[#FF1744]/10 border-2 border-[#FF1744] p-5 rounded-2xl text-center flex flex-col items-center gap-2 relative shadow-lg shadow-[#FF1744]/10">
-              <span className="text-2xl">🤫</span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#FF1744]">
-                Tu Misión Oculta en esta ronda:
-              </span>
-              <p className="text-base font-black text-white leading-snug">
-                {myMission}
-              </p>
-              <span className="text-[10px] text-[#94A3B8] mt-1">
-                (Memorízala. No dejes que nadie vea tu pantalla).
-              </span>
-            </div>
-
-            <button
-              onClick={() => setPhase('playing')}
-              className="w-full bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black text-base py-4 rounded-2xl shadow-xl shadow-[#CCFF00]/20 flex items-center justify-center gap-2 active:scale-95 transition-all mt-2"
-            >
-              ¡ENTENDIDO, BLOQUEAR Y JUGAR! ⏱️
-            </button>
-          </div>
-        )}
-
-        {/* FASE 2: MODO CHARLA EN CURSO (MÓVILES BOCA ABAJO) */}
-        {phase === 'playing' && (
-          <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center gap-6 animate-in fade-in duration-300">
-            
-            {/* RELOJ EN TIEMPO REAL */}
-            <div className="flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full border-4 border-[#FF1744] flex items-center justify-center bg-[#FF1744]/10 shadow-lg shadow-[#FF1744]/20 animate-pulse">
-                <span className="font-brand font-black text-3xl text-white">
-                  {formatTime(timeLeft)}
-                </span>
-              </div>
-              <span className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-widest mt-3">
-                Tiempo de Conversación
-              </span>
-            </div>
-
-            <div className="bg-[#0B0E14] p-4 rounded-2xl border border-white/5 w-full">
-              <p className="text-xs text-[#94A3B8] font-medium leading-relaxed">
-                📵 <strong>Deja el móvil en la mesa boca abajo.</strong><br />
-                Hablad con normalidad del tema y cumple tu misión sin que sospechen.
-              </p>
-            </div>
-
-            {/* BOTÓN DE EMERGENCIA PARA TERMINAR ANTES SI TODOS ACABAN */}
-            <button
-              onClick={() => setPhase('self_report')}
-              className="text-[11px] text-[#94A3B8] hover:text-white underline underline-offset-4"
-            >
-              (Terminar ronda ahora)
-            </button>
-          </div>
-        )}
-
-        {/* FASE 3: AUTO-DECLARACIÓN PRIVADA */}
-        {phase === 'self_report' && (
-          <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-5 animate-in zoom-in-95 duration-300">
-            <span className="text-3xl">🛎️</span>
-            <div>
-              <h2 className="text-xl font-black text-white">¡Fin del Tiempo!</h2>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                Tu misión era: <strong className="text-white">"{myMission}"</strong>
-              </p>
-            </div>
-
-            <p className="text-sm font-bold text-white mt-2">
-              ¿Conseguiste cumplir tu misión antes de que sonara la alarma?
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 w-full mt-2">
-              <button
-                onClick={() => handleSelfReport(true)}
-                className="bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black py-4 rounded-2xl flex flex-col items-center gap-1 shadow-lg shadow-[#CCFF00]/20 active:scale-95 transition-all"
-              >
-                <CheckCircle2 className="w-6 h-6" />
-                <span>SÍ, LO LOGRÉ</span>
-              </button>
-
-              <button
-                onClick={() => handleSelfReport(false)}
-                className="bg-white/10 hover:bg-white/20 text-white font-black py-4 rounded-2xl flex flex-col items-center gap-1 active:scale-95 transition-all"
-              >
-                <XCircle className="w-6 h-6 text-[#FF1744]" />
-                <span>NO HUBO FORMA</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* FASE 4: PANTALLA DE DEDUCCIÓN / SOSPECHAS */}
-        {phase === 'deduction' && (
-          <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in duration-300">
-            <div className="text-center">
-              <h2 className="text-xl font-black text-white">🕵️‍♂️ Hora de Sospechar</h2>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                Escribe qué crees que intentaba hacer cada uno (+50 pts si aciertas):
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
-              {players
-                .filter((p) => p.id !== player?.id)
-                .map((p) => (
-                  <div key={p.id} className="bg-[#0B0E14] p-3.5 rounded-2xl border border-white/5">
-                    <label className="block text-xs font-black text-[#CCFF00] mb-1">
-                      {p.nickname}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej: Intentó que habláramos de coches..."
-                      value={deductions[p.id] || ''}
-                      onChange={(e) =>
-                        setDeductions({ ...deductions, [p.id]: e.target.value })
-                      }
-                      className="w-full bg-transparent text-xs text-white placeholder-[#94A3B8]/30 outline-none"
-                    />
-                  </div>
+            {currentQuestion?.type === 'accusation' && phase !== 'results' && (
+              <div className="grid grid-cols-2 gap-2.5">
+                {players.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setSelectedAnswer(p.nickname); setPhase('results'); confetti({ particleCount: 30 }); }}
+                    className="p-3.5 rounded-2xl bg-[#0B0E14] border border-white/10 hover:border-[#FF1744] font-bold text-sm text-white flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>👉</span> {p.nickname}
+                  </button>
                 ))}
-            </div>
-
-            <button
-              onClick={handleSubmitDeductions}
-              className="w-full bg-[#7928CA] hover:bg-[#681fb0] text-white font-black text-base py-4 rounded-2xl shadow-xl shadow-[#7928CA]/30 flex items-center justify-center gap-2 active:scale-95 transition-all mt-2"
-            >
-              ENVIAR DEDUCCIONES 🚀
-            </button>
-          </div>
-        )}
-
-        {/* FASE 5: RESULTADOS Y PODIO */}
-        {phase === 'results' && (
-          <div className="w-full bg-[#121620] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-5 animate-in zoom-in-95 duration-300">
-            <Trophy className="w-12 h-12 text-[#CCFF00] animate-bounce" />
-            
-            <div>
-              <h2 className="text-2xl font-brand font-black text-white">¡VEREDICTO FINAL!</h2>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                Revelación de misiones y reparto de puntos
-              </p>
-            </div>
-
-            <div className="w-full bg-[#0B0E14] p-4 rounded-2xl border border-white/5 flex flex-col gap-3 text-left">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <span className="font-bold text-sm text-white">Tu Misión:</span>
-                <span className="text-xs font-black text-[#CCFF00]">
-                  {selfReportSuccess ? '+100 pts (Éxito)' : '+0 pts'}
-                </span>
               </div>
-              <p className="text-xs text-[#94A3B8]">
-                "{myMission}"
-              </p>
-            </div>
+            )}
 
-            <button
-              onClick={() => router.push(`/room/${roomCode}`)}
-              className="w-full bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black text-base py-4 rounded-2xl shadow-xl shadow-[#CCFF00]/20 active:scale-95 transition-all mt-2"
-            >
-              JUGAR OTRA RONDA 🔥
-            </button>
+            {currentQuestion?.type !== 'accusation' && phase !== 'results' && (
+              <div className="flex flex-col gap-2.5">
+                {(currentQuestion?.options || ['Opción A', 'Opción B', 'Opción C', 'Opción D']).map((opt: string, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => { setSelectedAnswer(opt); setPhase('results'); confetti({ particleCount: 30 }); }}
+                    className="p-3.5 rounded-2xl bg-[#0B0E14] border border-white/10 hover:border-[#CCFF00] font-bold text-xs sm:text-sm text-white text-left active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span className="text-[#CCFF00] font-black mr-2">[{String.fromCharCode(65 + idx)}]</span>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {phase === 'results' && (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#CCFF00]/10 border border-[#CCFF00] flex items-center justify-center text-xl">
+                  ⚖️
+                </div>
+                <div>
+                  <h3 className="font-brand font-black text-xl text-white">¡VOTO REGISTRADO!</h3>
+                  <p className="text-xs text-[#94A3B8] mt-1">Has votado: <strong className="text-[#CCFF00]">"{selectedAnswer}"</strong></p>
+                </div>
+                <button
+                  onClick={() => router.push(`/room/${roomCode}`)}
+                  className="w-full bg-[#CCFF00] hover:bg-[#b8e600] text-black font-black py-4 rounded-2xl active:scale-95 transition-all mt-2 cursor-pointer"
+                >
+                  SIGUIENTE RONDA 🔥
+                </button>
+              </div>
+            )}
           </div>
         )}
 
